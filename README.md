@@ -1,0 +1,1 @@
+# lectum-typescript-hw-01
