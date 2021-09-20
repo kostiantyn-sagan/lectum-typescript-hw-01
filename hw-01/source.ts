@@ -22,44 +22,68 @@ const vedicRegex = /(\d)(?=(\d\d)+\d\b)/g;
  * @param {number|string|currency} value
  * @param {object} [opts]
  */
-function currency(value: number | string, opts: object) {
-  let that: object = this;
 
-  if (!(that instanceof currency)) {
-    return new currency(value, opts);
+type currencyType = (
+  this: {
+    intValue: number;
+    value: number;
+    increment: number;
+    _settings: object;
+    _precision: number;
+  },
+  value: number | string | { value?: number | string },
+  opts: { increment: number; groups: RegExp; useVedic: boolean },
+) => object;
+
+let currency = <currencyType>(
+  function currency(
+    value: number | string | { value?: number | string },
+    opts: { increment: number; groups: RegExp; useVedic: boolean },
+  ) {
+    let that = this;
+
+    if (!(that instanceof currency)) {
+      return new (currency as any)(value, opts);
+    }
+
+    let settings = Object.assign({}, defaults, opts),
+      precision = pow(settings.precision),
+      v = parse(value, settings);
+
+    that.intValue = v;
+    that.value = v / precision;
+
+    // Set default incremental value
+    settings.increment = settings.increment || 1 / precision;
+
+    // Support vedic numbering systems
+    // see: https://en.wikipedia.org/wiki/Indian_numbering_system
+    if (settings.useVedic) {
+      settings.groups = vedicRegex;
+    } else {
+      settings.groups = groupRegex;
+    }
+
+    // Intended for internal usage only - subject to change
+    this._settings = settings;
+    this._precision = precision;
   }
+);
 
-  let settings = Object.assign({}, defaults, opts),
-    precision = pow(settings.precision),
-    v = parse(value, settings);
-
-  that.intValue = v;
-  that.value = v / precision;
-
-  // Set default incremental value
-  settings.increment = settings.increment || 1 / precision;
-
-  // Support vedic numbering systems
-  // see: https://en.wikipedia.org/wiki/Indian_numbering_system
-  if (settings.useVedic) {
-    settings.groups = vedicRegex;
-  } else {
-    settings.groups = groupRegex;
-  }
-
-  // Intended for internal usage only - subject to change
-  this._settings = settings;
-  this._precision = precision;
-}
-
-function parse(value, opts, useRounding = true) {
+function parse(
+  value: number | string | object,
+  opts: { decimal: string; errorOnInvalid: boolean; precision: number },
+  useRounding = true,
+) {
   let v = 0,
     { decimal, errorOnInvalid, precision: decimals } = opts,
     precision = pow(decimals),
     isNumber = typeof value === 'number';
 
   if (isNumber || value instanceof currency) {
-    v = (isNumber ? value : value.value) * precision;
+    v =
+      (isNumber ? (value as number) : (value as { value: number }).value) *
+      precision;
   } else if (typeof value === 'string') {
     let regex = new RegExp('[^-\\d' + decimal + ']', 'g'),
       decimalString = new RegExp('\\' + decimal, 'g');
