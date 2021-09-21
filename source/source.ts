@@ -1,4 +1,20 @@
-const defaults = {
+// Types
+
+type defaultsTypes = {
+  symbol: string;
+  separator: string;
+  decimal: string;
+  formatWithSymbol: boolean;
+  errorOnInvalid: boolean;
+  precision: number;
+  pattern: string;
+  negativePattern: string;
+  increment?: number;
+  groups?: RegExp;
+  useVedic?: boolean;
+};
+
+const defaults: defaultsTypes = {
   symbol: '$',
   separator: ',',
   decimal: '.',
@@ -9,13 +25,15 @@ const defaults = {
   negativePattern: '-!#',
 };
 
-const round = (v: number) => Math.round(v);
-const pow = (p: number) => Math.pow(10, p);
-const rounding = (value: number, increment: number) =>
-  round(value / increment) * increment;
+const round: (v: number) => number = (v: number) => Math.round(v);
+const pow: (p: number) => number = (p: number) => Math.pow(10, p);
+const rounding: (value: number, increment: number) => number = (
+  value: number,
+  increment: number,
+) => round(value / increment) * increment;
 
-const groupRegex = /(\d)(?=(\d{3})+\b)/g;
-const vedicRegex = /(\d)(?=(\d\d)+\d\b)/g;
+// const groupRegex = /(\d)(?=(\d{3})+\b)/g;
+// const vedicRegex = /(\d)(?=(\d\d)+\d\b)/g;
 
 /**
  * Create a new instance of currency.js
@@ -23,35 +41,30 @@ const vedicRegex = /(\d)(?=(\d\d)+\d\b)/g;
  * @param {object} [opts]
  */
 
-type currencyType = (
-  this: {
-    intValue: number;
-    value: number;
-    increment: number;
-    _settings: object;
-    _precision: number;
-  },
-  value: number | string | { value?: number | string },
-  opts: { increment: number; groups: RegExp; useVedic: boolean },
-) => object;
+class Currency {
+  intValue: number | undefined;
+  value: number | undefined;
+  _settings: defaultsTypes;
+  _precision: number;
+  groupRegex: RegExp = /(\d)(?=(\d{3})+\b)/g;
+  vedicRegex: RegExp = /(\d)(?=(\d\d)+\d\b)/g;
 
-let currency = <currencyType>(
-  function currency(
-    value: number | string | { value?: number | string },
-    opts: { increment: number; groups: RegExp; useVedic: boolean },
+  constructor(
+    value: number | string | Currency,
+    opts?: Partial<defaultsTypes>,
   ) {
-    let that = this;
+    // let that = this;
 
-    if (!(that instanceof currency)) {
-      return new (currency as any)(value, opts);
+    if (!(this instanceof Currency)) {
+      return new Currency(value, opts);
     }
 
-    let settings = Object.assign({}, defaults, opts),
-      precision = pow(settings.precision),
-      v = parse(value, settings);
+    let settings = Object.assign({}, defaults, opts);
+    let precision = pow(settings.precision);
+    let v = parse(value, settings);
 
-    that.intValue = v;
-    that.value = v / precision;
+    this.intValue = v;
+    this.value = v / precision;
 
     // Set default incremental value
     settings.increment = settings.increment || 1 / precision;
@@ -59,36 +72,60 @@ let currency = <currencyType>(
     // Support vedic numbering systems
     // see: https://en.wikipedia.org/wiki/Indian_numbering_system
     if (settings.useVedic) {
-      settings.groups = vedicRegex;
+      settings.groups = this.vedicRegex;
     } else {
-      settings.groups = groupRegex;
+      settings.groups = this.groupRegex;
     }
 
     // Intended for internal usage only - subject to change
     this._settings = settings;
     this._precision = precision;
   }
-);
+}
 
-function parse(
-  value: number | string | object,
-  opts: { decimal: string; errorOnInvalid: boolean; precision: number },
-  useRounding = true,
-) {
-  let v: number = 0,
+// function currency(value, opts) {
+//   // let that = this;
+
+//   if (!(that instanceof currency)) {
+//     return new currency(value, opts);
+//   }
+
+//   let settings = Object.assign({}, defaults, opts),
+//     precision = pow(settings.precision),
+//     v = parse(value, settings);
+
+//   that.intValue = v;
+//   that.value = v / precision;
+
+//   // Set default incremental value
+//   settings.increment = settings.increment || 1 / precision;
+
+//   // Support vedic numbering systems
+//   // see: https://en.wikipedia.org/wiki/Indian_numbering_system
+//   if (settings.useVedic) {
+//     settings.groups = vedicRegex;
+//   } else {
+//     settings.groups = groupRegex;
+//   }
+
+//   // Intended for internal usage only - subject to change
+//   this._settings = settings;
+//   this._precision = precision;
+// }
+
+function parse(value, opts, useRounding = true) {
+  let v = 0,
     { decimal, errorOnInvalid, precision: decimals } = opts,
     precision = pow(decimals),
     isNumber = typeof value === 'number';
 
   if (isNumber || value instanceof currency) {
-    v =
-      (isNumber ? (value as number) : (value as { value: number }).value) *
-      precision;
+    v = (isNumber ? value : value.value) * precision;
   } else if (typeof value === 'string') {
     let regex = new RegExp('[^-\\d' + decimal + ']', 'g'),
       decimalString = new RegExp('\\' + decimal, 'g');
     v =
-      <any>value
+      value
         .replace(/\((.*)\)/, '-$1') // allow negative e.g. (1.99)
         .replace(regex, '') // replace any non numeric values
         .replace(decimalString, '.') * // convert any decimal values
@@ -102,7 +139,7 @@ function parse(
   }
 
   // Handle additional decimal for proper rounding.
-  v = <any>v.toFixed(4);
+  v = v.toFixed(4);
 
   return useRounding ? round(v) : v;
 }
@@ -113,7 +150,7 @@ currency.prototype = {
    * @param {number} number
    * @returns {currency}
    */
-  add(number: number): object {
+  add(number) {
     let { intValue, _settings, _precision } = this;
     return currency(
       (intValue += parse(number, _settings)) / _precision,
