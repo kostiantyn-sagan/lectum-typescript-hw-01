@@ -61,7 +61,7 @@ class Currency {
 
     let settings = Object.assign({}, defaults, opts);
     let precision = pow(settings.precision);
-    let v = parse(value, settings);
+    let v = this.parse(value, settings);
 
     this.intValue = v;
     this.value = v / precision;
@@ -80,6 +80,43 @@ class Currency {
     // Intended for internal usage only - subject to change
     this._settings = settings;
     this._precision = precision;
+  }
+
+  parse(
+    value: number | string | Currency,
+    opts: defaultsTypes,
+    useRounding = true,
+  ) {
+    let v = 0;
+    let { decimal, errorOnInvalid, precision: decimals } = opts;
+    let precision: number = pow(decimals);
+    // let isNumber = typeof value === 'number';
+
+    if (value instanceof Currency) {
+      v = Number(value.value) * precision;
+    } else if (typeof value === 'number') {
+      v = value * precision;
+    } else if (typeof value === 'string') {
+      let regex = new RegExp('[^-\\d' + decimal + ']', 'g'),
+        decimalString = new RegExp('\\' + decimal, 'g');
+      const replacedValue = value
+        .replace(/\((.*)\)/, '-$1')
+        .replace(regex, '')
+        .replace(decimalString, '.');
+
+      v = Number(replacedValue) * precision;
+      v = v || 0;
+    } else {
+      if (errorOnInvalid) {
+        throw Error('Invalid Input');
+      }
+      v = 0;
+    }
+
+    // Handle additional decimal for proper rounding.
+    v = Number(v.toFixed(4));
+
+    return useRounding ? round(v) : v;
   }
 }
 
@@ -113,36 +150,36 @@ class Currency {
 //   this._precision = precision;
 // }
 
-function parse(value, opts, useRounding = true) {
-  let v = 0,
-    { decimal, errorOnInvalid, precision: decimals } = opts,
-    precision = pow(decimals),
-    isNumber = typeof value === 'number';
+// function parse(value, opts, useRounding = true) {
+//   let v = 0,
+//     { decimal, errorOnInvalid, precision: decimals } = opts,
+//     precision = pow(decimals),
+//     isNumber = typeof value === 'number';
 
-  if (isNumber || value instanceof currency) {
-    v = (isNumber ? value : value.value) * precision;
-  } else if (typeof value === 'string') {
-    let regex = new RegExp('[^-\\d' + decimal + ']', 'g'),
-      decimalString = new RegExp('\\' + decimal, 'g');
-    v =
-      value
-        .replace(/\((.*)\)/, '-$1') // allow negative e.g. (1.99)
-        .replace(regex, '') // replace any non numeric values
-        .replace(decimalString, '.') * // convert any decimal values
-      precision; // scale number to integer value
-    v = v || 0;
-  } else {
-    if (errorOnInvalid) {
-      throw Error('Invalid Input');
-    }
-    v = 0;
-  }
+//   if (isNumber || value instanceof currency) {
+//     v = (isNumber ? value : value.value) * precision;
+//   } else if (typeof value === 'string') {
+//     let regex = new RegExp('[^-\\d' + decimal + ']', 'g'),
+//       decimalString = new RegExp('\\' + decimal, 'g');
+//     v =
+//       value
+//         .replace(/\((.*)\)/, '-$1') // allow negative e.g. (1.99)
+//         .replace(regex, '') // replace any non numeric values
+//         .replace(decimalString, '.') * // convert any decimal values
+//       precision; // scale number to integer value
+//     v = v || 0;
+//   } else {
+//     if (errorOnInvalid) {
+//       throw Error('Invalid Input');
+//     }
+//     v = 0;
+//   }
 
-  // Handle additional decimal for proper rounding.
-  v = v.toFixed(4);
+//   // Handle additional decimal for proper rounding.
+//   v = v.toFixed(4);
 
-  return useRounding ? round(v) : v;
-}
+//   return useRounding ? round(v) : v;
+// }
 
 currency.prototype = {
   /**
