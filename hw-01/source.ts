@@ -75,7 +75,7 @@ function parse(
   opts: { decimal: string; errorOnInvalid: boolean; precision: number },
   useRounding = true,
 ) {
-  let v = 0,
+  let v: number = 0,
     { decimal, errorOnInvalid, precision: decimals } = opts,
     precision = pow(decimals),
     isNumber = typeof value === 'number';
@@ -88,7 +88,7 @@ function parse(
     let regex = new RegExp('[^-\\d' + decimal + ']', 'g'),
       decimalString = new RegExp('\\' + decimal, 'g');
     v =
-      value
+      <any>value
         .replace(/\((.*)\)/, '-$1') // allow negative e.g. (1.99)
         .replace(regex, '') // replace any non numeric values
         .replace(decimalString, '.') * // convert any decimal values
@@ -102,7 +102,7 @@ function parse(
   }
 
   // Handle additional decimal for proper rounding.
-  v = v.toFixed(4);
+  v = <any>v.toFixed(4);
 
   return useRounding ? round(v) : v;
 }
@@ -113,7 +113,7 @@ currency.prototype = {
    * @param {number} number
    * @returns {currency}
    */
-  add(number) {
+  add(number: number): object {
     let { intValue, _settings, _precision } = this;
     return currency(
       (intValue += parse(number, _settings)) / _precision,
