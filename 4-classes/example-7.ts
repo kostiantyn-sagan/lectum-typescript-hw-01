@@ -1,6 +1,8 @@
 class Base {
   protected name: string;
-  protected constructor(theName: string) { this.name = theName; }
+  protected constructor(theName: string) {
+    this.name = theName;
+  }
 }
 
 // Employee can extend Person
@@ -17,5 +19,5 @@ class Entity extends Base {
   }
 }
 
-let item1 = new Entity("Howard", "Sales");
+let item1 = new Entity('Howard', 'Sales');
 // let item2 = new Base("John"); // Error: The 'Person' constructor is protected
